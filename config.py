@@ -21,12 +21,16 @@ prefs = JSONConfig('plugins/koreader_metadata_sync')
 prefs.defaults['shelf_lookup_name'] = None
 prefs.defaults['an_lookup_name'] = None
 prefs.defaults['read_lookup_name'] = None
+prefs.defaults['date_lookup_name'] = None
+prefs.defaults['start_date_lookup_name'] = None
 prefs.defaults['fav_lookup_name'] = None
 prefs.defaults['position_lookup_name'] = None
 prefs.defaults['pages_lookup_name'] = None
 prefs.defaults['rating_lookup_name'] = None
 prefs.defaults['percent_lookup_name'] = None
 prefs.defaults['review_lookup_name'] = None
+prefs.defaults['sidecar_path_lookup_name'] = None
+prefs.defaults['sidecar_backup_lookup_name'] = None
 
 prefs.defaults['new_status'] = "new"
 prefs.defaults['reading_status'] = "reading"
@@ -126,14 +130,39 @@ class ConfigWidget(QWidget):
         main_layout.addWidget(self.read_combo, 2, 1)
 
 
+        date_label = QLabel('Completion date column:')
+        date_label.setWordWrap(True)
+        main_layout.addWidget(date_label, 3, 0)
+        self.date_combo = QComboBox(self)
+        self.date_combo.addItems(self.get_columns("datetime", custom=True))
+        self.date_combo.setCurrentIndex(self.get_index(prefs['date_lookup_name']))
+        date_label.setBuddy(self.date_combo)
+        main_layout.addWidget(self.date_combo, 3, 1)
+
+
+
+        start_date_label = QLabel('Reading start date column:')
+        start_date_label.setWordWrap(True)
+        main_layout.addWidget(start_date_label, 4, 0)
+        self.start_date_combo = QComboBox(self)
+        self.start_date_combo.addItems(self.get_columns("datetime", custom=True))
+        self.start_date_combo.setCurrentIndex(self.get_index(prefs['start_date_lookup_name']))
+        start_date_label.setBuddy(self.start_date_combo)
+        main_layout.addWidget(self.start_date_combo, 4, 1)
+
+
+
+
+
+
         fav_label = QLabel('Favorite column:')
         fav_label.setWordWrap(True)
         self.fav_combo = QComboBox(self)
         self.fav_combo.addItems(self.get_columns("bool", custom=True))
         self.fav_combo.setCurrentIndex(self.get_index(prefs['fav_lookup_name']))
         fav_label.setBuddy(self.fav_combo)
-        main_layout.addWidget(fav_label, 3, 0)
-        main_layout.addWidget(self.fav_combo, 3, 1)
+        main_layout.addWidget(fav_label, 5, 0)
+        main_layout.addWidget(self.fav_combo, 5, 1)
 
 
 
@@ -144,8 +173,8 @@ class ConfigWidget(QWidget):
         self.an_combo.addItems(self.get_columns("comments", custom=True))
         self.an_combo.setCurrentIndex(self.get_index(prefs['an_lookup_name']))
         an_label.setBuddy(self.an_combo)
-        main_layout.addWidget(an_label, 4, 0)
-        main_layout.addWidget(self.an_combo, 4, 1)
+        main_layout.addWidget(an_label, 6, 0)
+        main_layout.addWidget(self.an_combo, 6, 1)
 
         position_label = QLabel('Reading position column:')
         position_label.setWordWrap(True)
@@ -153,8 +182,8 @@ class ConfigWidget(QWidget):
         self.position_combo.addItems(self.get_columns("comments", custom=True))
         self.position_combo.setCurrentIndex(self.get_index(prefs['position_lookup_name']))
         position_label.setBuddy(self.position_combo)
-        main_layout.addWidget(position_label, 5, 0)
-        main_layout.addWidget(self.position_combo, 5, 1)
+        main_layout.addWidget(position_label, 7, 0)
+        main_layout.addWidget(self.position_combo, 7, 1)
 
 
 
@@ -165,8 +194,8 @@ class ConfigWidget(QWidget):
         self.pages_combo.addItems(self.get_columns("int", custom=False))
         self.pages_combo.setCurrentIndex(self.get_index(prefs['pages_lookup_name']))
         pages_label.setBuddy(self.pages_combo)
-        main_layout.addWidget(pages_label, 6, 0)
-        main_layout.addWidget(self.pages_combo, 6, 1)
+        main_layout.addWidget(pages_label, 8, 0)
+        main_layout.addWidget(self.pages_combo, 8, 1)
 
 
 
@@ -176,8 +205,8 @@ class ConfigWidget(QWidget):
         self.rating_combo.addItems(self.get_columns("rating", custom=False))
         self.rating_combo.setCurrentIndex(self.get_index(prefs['rating_lookup_name']))
         rating_label.setBuddy(self.rating_combo)
-        main_layout.addWidget(rating_label, 7, 0)
-        main_layout.addWidget(self.rating_combo, 7, 1)
+        main_layout.addWidget(rating_label, 9, 0)
+        main_layout.addWidget(self.rating_combo, 9, 1)
 
 
 
@@ -188,8 +217,8 @@ class ConfigWidget(QWidget):
         self.percent_combo.addItems(self.get_columns("int", custom=False))
         self.percent_combo.setCurrentIndex(self.get_index(prefs['percent_lookup_name']))
         percent_label.setBuddy(self.percent_combo)
-        main_layout.addWidget(percent_label, 8, 0)
-        main_layout.addWidget(self.percent_combo, 8, 1)
+        main_layout.addWidget(percent_label, 10, 0)
+        main_layout.addWidget(self.percent_combo, 10, 1)
 
 
 
@@ -202,12 +231,32 @@ class ConfigWidget(QWidget):
         self.review_combo.addItems(self.get_columns("comments", custom=True))
         self.review_combo.setCurrentIndex(self.get_index(prefs['review_lookup_name']))
         review_label.setBuddy(self.review_combo)
-        main_layout.addWidget(review_label, 9, 0)
-        main_layout.addWidget(self.review_combo, 9, 1)
+        main_layout.addWidget(review_label, 11, 0)
+        main_layout.addWidget(self.review_combo, 11, 1)
 
 
 
 
+
+
+        sidecar_path_label = QLabel('Sidecar path column:')
+        sidecar_path_label.setWordWrap(True)
+        self.sidecar_path_combo = QComboBox(self)
+        self.sidecar_path_combo.addItems(self.get_columns("comments", custom=True))
+        self.sidecar_path_combo.setCurrentIndex(self.get_index(prefs['sidecar_path_lookup_name']))
+        sidecar_path_label.setBuddy(self.sidecar_path_combo)
+        main_layout.addWidget(sidecar_path_label, 12, 0)
+        main_layout.addWidget(self.sidecar_path_combo, 12, 1)
+
+
+        sidecar_backup_label = QLabel('Sidecar backup column:')
+        sidecar_backup_label.setWordWrap(True)
+        self.sidecar_backup_combo = QComboBox(self)
+        self.sidecar_backup_combo.addItems(self.get_columns("comments", custom=True))
+        self.sidecar_backup_combo.setCurrentIndex(self.get_index(prefs['sidecar_backup_lookup_name']))
+        sidecar_backup_label.setBuddy(self.sidecar_backup_combo)
+        main_layout.addWidget(sidecar_backup_label, 13, 0)
+        main_layout.addWidget(self.sidecar_backup_combo, 13, 1)
 
 
         
@@ -322,6 +371,7 @@ class ConfigWidget(QWidget):
 
 
     def get_columns(self, type, custom=True, multiple=False):
+
         db = self.gui.current_db
         if custom:
             fields = db.custom_field_keys()
@@ -359,6 +409,8 @@ class ConfigWidget(QWidget):
 
         
         prefs['read_lookup_name'] = self.field_by_name[self.read_combo.currentText()]
+        prefs['date_lookup_name'] = self.field_by_name[self.date_combo.currentText()]
+        prefs['start_date_lookup_name'] = self.field_by_name[self.start_date_combo.currentText()]
         prefs['fav_lookup_name'] = self.field_by_name[self.fav_combo.currentText()]
         prefs['an_lookup_name'] = self.field_by_name[self.an_combo.currentText()]
         prefs['position_lookup_name'] = self.field_by_name[self.position_combo.currentText()]
@@ -366,6 +418,8 @@ class ConfigWidget(QWidget):
         prefs['rating_lookup_name'] = self.field_by_name[self.rating_combo.currentText()]
         prefs['percent_lookup_name'] = self.field_by_name[self.percent_combo.currentText()]
         prefs['review_lookup_name'] = self.field_by_name[self.review_combo.currentText()]
+        prefs['sidecar_path_lookup_name'] = self.field_by_name[self.sidecar_path_combo.currentText()]
+        prefs['sidecar_backup_lookup_name'] = self.field_by_name[self.sidecar_backup_combo.currentText()]
 
         prefs['composite_collections'] = self.composite_collections_checkbox.isChecked()
     

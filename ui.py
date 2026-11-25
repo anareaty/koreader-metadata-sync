@@ -39,6 +39,7 @@ PLUGIN_ICONS = ['images/koreader.png',
                 'images/plus.png',
                 'images/remove.png',
                 'images/percent.png',
+                'images/calendar.png',
 
                 ]
 
@@ -67,6 +68,7 @@ class InterfacePlugin(InterfaceAction):
     def rebuild_menus(self):
         fm = self.gui.current_db.field_metadata.custom_field_metadata()
         self.has_read_column = prefs["read_lookup_name"] in fm and fm[prefs["read_lookup_name"]]['datatype'] == 'bool'
+        self.has_date_column = prefs["date_lookup_name"] in fm and fm[prefs["date_lookup_name"]]['datatype'] == 'datetime'
         self.has_fav_column = prefs["fav_lookup_name"] in fm and fm[prefs["fav_lookup_name"]]['datatype'] == 'bool'
         self.has_shelf_column = prefs["shelf_lookup_name"] in fm and fm[prefs["shelf_lookup_name"]]['datatype'] == 'text'
 
@@ -81,6 +83,9 @@ class InterfacePlugin(InterfaceAction):
         sendMenu = main_menu.addMenu(('Send selected'))
         sendMenu.addAction(self.get_icon('catalog'), ('Send collections'), self.send_collections)
         sendMenu.addAction(self.get_icon('ok'), ('Send read statuses'), self.send_read)
+
+        # sendMenu.addAction(self.get_icon('calendar'), ('Send completion dates'), self.send_date)
+
         sendMenu.addAction(self.get_icon('heart'), ('Send favorite statuses'), self.send_favorite)
         sendMenu.addAction(self.get_icon('rating'), ('Send ratings'), self.send_ratings)
         sendMenu.addAction(self.get_icon('edit_input'), ('Send reviews'), self.send_reviews)
@@ -93,6 +98,10 @@ class InterfacePlugin(InterfaceAction):
             loadMenu.addAction(self.get_icon('catalog'), ('Load collections'), self.load_collections)
 
         loadMenu.addAction(self.get_icon('ok'), ('Load read statuses'), self.load_read)
+
+        loadMenu.addAction(self.get_icon('calendar'), ('Load completion dates'), self.load_date)
+
+
         loadMenu.addAction(self.get_icon('heart'), ('Load favorite statuses'), self.load_favorite)
         
         loadMenu.addAction(self.get_icon('rating'), ('Load ratings'), self.load_ratings)
@@ -109,6 +118,9 @@ class InterfacePlugin(InterfaceAction):
 
 
         sidecarMenu = main_menu.addMenu(self.get_icon('metadata'), ('Manage metadata sidecars'))
+
+
+        sidecarMenu.addAction(self.get_icon('metadata'), ('Backup sidecars'), self.backup_sidecars)
         
         sidecarMenu.addAction(self.get_icon('plus'), ('Create missing sidecars'), self.create_sidecars)
         sidecarMenu.addAction(self.get_icon('remove'), ('Remove sidecars'), self.remove_sidecars)
@@ -136,6 +148,11 @@ class InterfacePlugin(InterfaceAction):
     def send_read(self):
         self.run_sync_job("send_read", "Sending read statuses to KOReader")
 
+    '''
+    def send_date(self):
+        self.run_sync_job("send_date", "Sending completion dates to KOReader")
+    '''
+
 
     def send_favorite(self):
         self.run_sync_job("send_favorite", "Sending favorite statuses to KOReader")
@@ -161,6 +178,10 @@ class InterfacePlugin(InterfaceAction):
 
     def load_read(self):
         self.run_sync_job("load_read", "Loading read statuses from KOReader")
+
+
+    def load_date(self):
+        self.run_sync_job("load_date", "Loading completion dates from KOReader")
 
 
     def load_favorite(self):
@@ -201,6 +222,11 @@ class InterfacePlugin(InterfaceAction):
     def remove_sidecars(self):
         if question_dialog(self.gui, "Confirm deletion", "Do you really want to remove metadata sidecar files for all selected books? This action will erase reading positions and annotations from your device!"):
             self.run_sync_job("remove_sidecars", "Removing sidecars")
+
+
+
+    def backup_sidecars(self):
+        self.run_sync_job("backup_sidecars", "Backup sidecars")
 
 
 
@@ -256,6 +282,9 @@ class InterfacePlugin(InterfaceAction):
                 if "read" in to_load and len(to_load["read"]) > 0:
                     self.gui.current_db.new_api.set_field(prefs["read_lookup_name"], to_load["read"])
 
+                if "date" in to_load and len(to_load["date"]) > 0:
+                    self.gui.current_db.new_api.set_field(prefs["date_lookup_name"], to_load["date"])
+
                 if "fav" in to_load and len(to_load["fav"]) > 0:
                     self.gui.current_db.new_api.set_field(prefs["fav_lookup_name"], to_load["fav"])
 
@@ -273,6 +302,17 @@ class InterfacePlugin(InterfaceAction):
 
                 if "reviews" in to_load and len(to_load["reviews"]) > 0:
                     self.gui.current_db.new_api.set_field(prefs["review_lookup_name"], to_load["reviews"])
+
+                if "sidecar_paths" in to_load and len(to_load["sidecar_paths"]) > 0:
+                    self.gui.current_db.new_api.set_field(prefs["sidecar_path_lookup_name"], to_load["sidecar_paths"])
+
+                if "backup" in to_load and len(to_load["backup"]) > 0:
+
+                    print("---------------------")
+                    print("LOADING BACKUPS")
+
+                    self.gui.current_db.new_api.set_field(prefs["sidecar_backup_lookup_name"], to_load["backup"])
+
 
                 if "annotations" in to_load and len(to_load["annotations"]) > 0:
                     self.gui.current_db.new_api.set_field(prefs["an_lookup_name"], to_load["annotations"])

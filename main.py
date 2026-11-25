@@ -11,6 +11,7 @@ from calibre.library import db as calibre_db
 from calibre_plugins.koreader_metadata_sync.config import prefs
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from calibre.utils.date import parse_date
 
 
 
@@ -39,20 +40,28 @@ def set_globals(data):
     
     
     device_main_storage = data["device_storages"]["main"]
-    device_metadata_path_main = device_main_storage + "metadata.calibre"
+
+
+    
+
+
+
+    device_metadata_path_main = device_main_storage + ".metadata.calibre"
+
+
+
+
     with open(device_metadata_path_main, "r") as file_main:
         device_metadata_main = json.load(file_main)
 
-    
-    
+
 
     device_card = None
     if data["device_storages"].get("card"):
         device_card = data["device_storages"]["card"]
-        device_metadata_path_card = device_card + "metadata.calibre"
+        device_metadata_path_card = device_card + ".metadata.calibre"
         with open(device_metadata_path_card, "r") as file_card:
             device_metadata_card = json.load(file_card)
-
 
 
 
@@ -70,7 +79,6 @@ def set_globals(data):
 
 
     
-
 
 
 
@@ -105,6 +113,12 @@ def set_globals(data):
 
 
 
+    global sync_date
+    sync_date = None
+    if prefs['date_lookup_name'] in current_db.all_field_keys():
+        sync_date = True
+
+
     global sync_fav
     sync_fav = None
     if prefs['fav_lookup_name'] in current_db.all_field_keys():
@@ -130,15 +144,24 @@ def set_globals(data):
     if prefs['percent_lookup_name'] in current_db.all_field_keys():
         sync_percent = True
 
+
+
+
     global sync_pages
     sync_pages = None
     if prefs['pages_lookup_name'] in current_db.all_field_keys():
         sync_pages = True
 
+
+
     global sync_review
     sync_review = None
     if prefs['review_lookup_name'] in current_db.all_field_keys():
         sync_review = True
+
+
+  
+
 
     global load_an
     load_an = None
@@ -146,10 +169,26 @@ def set_globals(data):
         load_an = True
 
 
+
+
+
+
+
+
+
+
+    global load_backup
+    load_backup = None
+    if prefs['sidecar_backup_lookup_name'] in current_db.all_field_keys():
+        load_backup = True
+
+
+
     global sync_pos
     sync_pos = None
     if prefs['position_lookup_name'] in current_db.all_field_keys():
         sync_pos = True
+
 
 
     global sync_collections
@@ -201,6 +240,12 @@ def send_all(data):
                 book.send_book_collections_kr()
             if sync_read:
                 book.send_read_kr()
+
+            '''
+            if sync_date:
+                book.send_date_kr()
+            '''
+
             if sync_fav:
                 book.send_fav_kr()
             if sync_rating:
@@ -311,6 +356,35 @@ def send_read(data):
 
 
 
+'''
+def send_date(data):
+    try:
+        set_globals(data)
+    except:
+        return "error", "Can not reach device metadata, it is probably still updating. Try again later."
+    
+    if storage_prefix_main == None or koreader_folder == "None":
+        return "error", "Can not find the KOReader folder. Try to set the override paths for your device."
+
+    if sync_date:
+        calibre_book_IDs = data["selected_ids"]
+
+        for calibre_book_ID in calibre_book_IDs:
+            book = SyncBook(calibre_book_ID)
+            if book.device_book_metadata:
+                book.get_kr_metadata()
+                book.send_date_kr()
+
+    done_msg = "Sending date finished"
+    return None, done_msg
+'''
+
+
+
+
+
+
+
 def send_favorite(data):
     try:
         set_globals(data)
@@ -399,6 +473,7 @@ def load_all(data):
     to_load = {
         "shelf": {},
         "read": {},
+        "date": {},
         "fav": {},
         "ratings": {},
         "percents": {},
@@ -421,23 +496,33 @@ def load_all(data):
         if book.device_book_metadata: 
             to_load_shelf = None
             to_load_read = None
+            to_load_date = None
             to_load_fav = None
             to_load_rating = None
             to_load_percent = None
             to_load_pages = None
             to_load_review = None
+
             
-            
+
             book.get_kr_metadata()
+
+            
+
+
+
+
+
             if book.book_row:
                 if sync_shelf:
                     to_load_shelf = book.load_shelf_kr()
                 
             if sync_read:
-                book.get_kr_metadata()
                 to_load_read_kr = book.load_read_kr()
                 if to_load_read_kr:
                     to_load_read = to_load_read_kr
+            if sync_date:
+                to_load_date = book.load_date_kr()
             if sync_fav:
                 to_load_fav = book.load_fav_kr()
             if sync_rating:
@@ -446,6 +531,12 @@ def load_all(data):
                 to_load_percent = book.load_percent_kr()
             if sync_review:
                 to_load_review = book.load_review_kr()
+
+
+
+   
+
+            
 
             if to_load_shelf or to_load_read or to_load_fav or to_load_rating or to_load_percent or to_load_review:
                 to_load["books_to_refresh"].append(calibre_book_ID)
@@ -458,11 +549,14 @@ def load_all(data):
             if to_load_pages:
                 to_load["pages"][calibre_book_ID] = to_load_pages["status"]
             if to_load_rating:
+
                 to_load["ratings"][calibre_book_ID] = to_load_rating
             if to_load_percent:
                 to_load["percents"][calibre_book_ID] = to_load_percent
             if to_load_review:
                 to_load["reviews"][calibre_book_ID] = to_load_review
+
+            
 
 
             if sync_pos:
@@ -490,7 +584,7 @@ def load_all(data):
             to_load["books_to_refresh"].append(calibre_book_ID)
 
         
-    done_msg = "Sending metadata finished"
+    done_msg = "Loading metadata finished"
     return to_load, done_msg
 
 
@@ -580,6 +674,44 @@ def load_read(data):
        
     done_msg = "Loaded read"
     return to_load, done_msg
+
+
+
+
+
+
+
+
+def load_date(data):
+    set_globals(data)
+
+    to_load = {
+        "date": {},
+        "books_to_refresh": []
+    }
+
+    if sync_date:
+        calibre_book_IDs = data["selected_ids"]
+
+        for calibre_book_ID in calibre_book_IDs:
+            book = SyncBook(calibre_book_ID)
+            if book.device_book_metadata:
+                to_load_date = None
+                book.get_kr_metadata()
+                to_load_date = book.load_date_kr()
+                if to_load_date:
+                    to_load["date"][calibre_book_ID] = to_load_date
+                    to_load["books_to_refresh"].append(calibre_book_ID)
+                    
+    done_msg = "Loaded dates"
+    return to_load, done_msg
+
+
+
+
+
+
+
 
 
 
@@ -838,6 +970,34 @@ def remove_sidecars(data):
 
 
 
+def backup_sidecars(data):
+    set_globals(data)
+
+    to_load = {
+        "backup": {},
+        "books_to_refresh": []
+    }
+    
+    calibre_book_IDs = data["selected_ids"]
+    for calibre_book_ID in calibre_book_IDs:
+            book = SyncBook(calibre_book_ID)
+            if book.device_book_metadata:
+                to_load_backup = book.backup_kr_sidecar()
+
+                if to_load_backup:
+                    to_load["backup"][calibre_book_ID] = to_load_backup
+                    to_load["books_to_refresh"].append(calibre_book_ID)
+
+    done_msg = "Sidecars backup done"
+    return to_load, done_msg
+
+
+
+
+
+
+
+
 
 
 
@@ -910,6 +1070,9 @@ def get_kr_collections():
     global kr_collections
     kr_collections = None
     kr_collections_path = device_main_storage + koreader_folder + "/settings/collection.lua"
+
+
+
 
     if os.path.exists(kr_collections_path):
         with open(kr_collections_path, 'r') as file:
@@ -1003,6 +1166,15 @@ def get_device_paths(device_name):
     if prefs["koreader_folder_override"]:
         device_paths["koreader_folder"] = prefs["koreader_folder_override"]
 
+
+
+
+
+
+    # device_paths["storage_prefix_main"] = "/mnt/onboard/Books"
+    # device_paths["koreader_folder"] = "..\.adds\koreader"
+
+
     return device_paths
 
 
@@ -1029,7 +1201,14 @@ class SyncBook():
 
     def get_device_book_metadata(self):
         # Find the book in Calibre metadata objects on device. We must check both the main storage and the card, it it is exist.
+
+
+
+
         self.device_book_metadata = next((bookData for bookData in device_metadata_main if bookData["application_id"] == self.calibre_book_ID), None)
+        
+   
+
         storage_prefix = storage_prefix_main                
 
         if self.device_book_metadata == None and device_card:
@@ -1038,7 +1217,17 @@ class SyncBook():
 
         if self.device_book_metadata:
             bookPath = self.device_book_metadata["lpath"]
+
+
+            
+
+            
+
             self.book_fullpath = storage_prefix + "/" + bookPath
+
+        
+
+            
             self.book_filesize = self.device_book_metadata["size"]
 
             # Get the filename an folder of the book
@@ -1046,7 +1235,8 @@ class SyncBook():
             self.bookPath_file = self.book_fullpath.rsplit('/', 1)[1].replace("'", r"''")
             self.bookPath_folder = self.book_fullpath.rsplit('/', 1)[0].replace("'", r"''")
 
-    
+            
+            
 
 
   
@@ -1063,16 +1253,22 @@ class SyncBook():
 
         # Look for sidecar in book folder
         sidecar_path_device = self.book_fullpath.rsplit('.', 1)[0] + ".sdr/metadata." + format + ".lua"
-        self.sidecar_path = sidecar_path_device.replace(storage_prefix_main + "/", device_main_storage)
-        
+
+        self.sidecar_path = os.path.normpath(sidecar_path_device.replace(storage_prefix_main + "/", device_main_storage))
+
+
         if storage_prefix_card:
-            self.sidecar_path = sidecar_path_device.replace(storage_prefix_card + "/", device_card)
+            self.sidecar_path = os.path.normpath(sidecar_path_device.replace(storage_prefix_card + "/", device_card))
 
         if not os.path.exists(self.sidecar_path):
             # Look for sidecar in docsettings folder
-            self.sidecar_path = device_main_storage + koreader_folder + "/docsettings" + sidecar_path_device
+            self.sidecar_path = os.path.normpath(device_main_storage + koreader_folder + "/docsettings" + sidecar_path_device)
 
-        if os.path.exists(self.sidecar_path):
+
+
+
+        if self.sidecar_path and os.path.exists(self.sidecar_path):
+
             with open(self.sidecar_path, 'r') as file:
                 content = str(file.read())
             lua_content = re.sub('^[^{]*', '', content).strip()
@@ -1080,8 +1276,9 @@ class SyncBook():
                 self.kr_metadata = lua.decode(lua_content)
             except:
                 pass
-
-
+        else: 
+            self.sidecar_path = ""
+        
 
 
     
@@ -1103,6 +1300,34 @@ class SyncBook():
 
 
 
+
+
+
+
+    def generare_metadata(self):
+
+        self.kr_metadata = {
+            "cre_dom_version": 20240114,
+            "doc_path": self.book_fullpath
+        }
+
+        saved_sidecar = calibreAPI.field_for(
+            prefs["sidecar_backup_lookup_name"], 
+            self.calibre_book_ID, default_value=None
+        )
+
+        if saved_sidecar:
+            lua_content = re.sub('^[^{]*', '', saved_sidecar).strip()
+            try:
+                self.kr_metadata = lua.decode(lua_content)
+                self.kr_metadata["doc_path"] = self.book_fullpath
+            except:
+                pass
+
+
+
+
+
     def generate_kr_sidecar(self):
         self.sidecar_path = None
         format = self.book_fullpath.rsplit('.', 1)[1]
@@ -1117,21 +1342,18 @@ class SyncBook():
                 metadata_folder = settings["document_metadata_folder"]
                 sidecar_path_device = self.book_fullpath.rsplit('.', 1)[0] + ".sdr/metadata." + format + ".lua"
                 if metadata_folder == "doc":
-                    self.sidecar_path = sidecar_path_device.replace(storage_prefix_main + "/", device_main_storage)
+                    self.sidecar_path = os.path.normpath(sidecar_path_device.replace(storage_prefix_main + "/", device_main_storage))
                     if storage_prefix_card:
-                        self.sidecar_path = sidecar_path_device.replace(storage_prefix_card + "/", device_card)
+                        self.sidecar_path = os.path.normpath(sidecar_path_device.replace(storage_prefix_card + "/", device_card))
                 elif metadata_folder == "dir":
-                    self.sidecar_path = device_main_storage + koreader_folder + "/docsettings" + sidecar_path_device
+                    self.sidecar_path = os.path.normpath(device_main_storage + koreader_folder + "/docsettings" + sidecar_path_device)
                 else:
                     pass
             except:
                 pass
 
         if self.sidecar_path:
-            self.kr_metadata = {
-                "cre_dom_version": 20240114,
-                "doc_path": self.book_fullpath
-            }
+            self.generare_metadata()
 
             dir = os.path.split(self.sidecar_path)[0]
             make_dir(dir)
@@ -1145,17 +1367,54 @@ class SyncBook():
 
 
 
+    def backup_kr_sidecar(self):
+        to_load_backup = None
+
+        if load_backup:
+
+            format = self.book_fullpath.rsplit('.', 1)[1]
+
+            # Look for sidecar in book folder
+            sidecar_path_device = self.book_fullpath.rsplit('.', 1)[0] + ".sdr/metadata." + format + ".lua"
+            self.sidecar_path = os.path.normpath(sidecar_path_device.replace(storage_prefix_main + "/", device_main_storage))
+    
+            if storage_prefix_card:
+                self.sidecar_path = os.path.normpath(sidecar_path_device.replace(storage_prefix_card + "/", device_card))
+    
+            if not os.path.exists(self.sidecar_path):
+                # Look for sidecar in docsettings folder
+                self.sidecar_path = os.path.normpath(device_main_storage + koreader_folder + "/docsettings" + sidecar_path_device)
+
+            if os.path.exists(self.sidecar_path):
+                with open(self.sidecar_path, 'r') as file:
+                    sidecar_content = str(file.read())
+                    if sidecar_content:
+                      
+                        to_load_backup = sidecar_content
+
+        return to_load_backup
+                
+
+
+
+
+
+
+
+
+
+
     def delete_kr_sidecar(self):
         # Look for sidecar in book folder
         sidecar_folder_path_device = self.book_fullpath.rsplit('.', 1)[0] + ".sdr"
-        sidecar_folder_path = sidecar_folder_path_device.replace(storage_prefix_main + "/", device_main_storage)
+        sidecar_folder_path = os.path.normpath(sidecar_folder_path_device.replace(storage_prefix_main + "/", device_main_storage))
         
         if storage_prefix_card:
-            sidecar_folder_path = sidecar_folder_path_device.replace(storage_prefix_card + "/", device_card)
+            sidecar_folder_path = os.path.normpath(sidecar_folder_path_device.replace(storage_prefix_card + "/", device_card))
 
         if not os.path.exists(sidecar_folder_path):
             # Look for sidecar in docsettings folder
-            sidecar_folder_path = device_main_storage + koreader_folder + "/docsettings" + sidecar_folder_path_device
+            sidecar_folder_path = os.path.normpath(device_main_storage + koreader_folder + "/docsettings" + sidecar_folder_path_device)
 
         if os.path.exists(sidecar_folder_path):
             shutil.rmtree(sidecar_folder_path)
@@ -1242,6 +1501,27 @@ class SyncBook():
             if "status" not in self.kr_metadata["summary"] or self.kr_metadata["summary"]["status"] != read_status:
                 self.kr_metadata["summary"]["status"] = read_status
                 self.update_kr_sidecar()
+
+
+
+
+
+    '''
+    def send_date_kr(self):
+        if self.kr_metadata:
+
+            date = calibreAPI.field_for(prefs['date_lookup_name'], self.calibre_book_ID, default_value=None)
+
+            if date:
+                date_string = date.strftime("%Y-%m-%d")
+
+                if "summary" not in self.kr_metadata:
+                    self.kr_metadata["summary"] = {}
+
+                if "date_finished" not in self.kr_metadata["summary"] or self.kr_metadata["summary"]["date_finished"] != date_string:
+                    self.kr_metadata["summary"]["date_finished"] = date_string
+                    self.update_kr_sidecar()
+    '''
 
 
 
@@ -1404,6 +1684,20 @@ class SyncBook():
 
 
 
+    def load_date_kr(self):
+        to_load_date = None
+        if self.kr_metadata:
+            if "summary" in self.kr_metadata:
+                if "date_finished" in self.kr_metadata["summary"]:
+                    date_string = self.kr_metadata["summary"]["date_finished"]
+                    # date = datetime.strptime(date_string,'%Y-%m-%d')
+
+                    date = parse_date(date_string)
+
+                    calibre_date = calibreAPI.field_for(prefs['date_lookup_name'], self.calibre_book_ID, default_value=None)
+                    if not calibre_date or calibre_date.strftime("%Y-%m-%d") != date_string:
+                        to_load_date = date
+        return to_load_date
 
 
 
